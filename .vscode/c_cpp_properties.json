@@ -11,6 +11,8 @@
             ],
             "defines": [
                 "ARDUINO=10813",
+                "ARDUINO_AVR_UNO",
+                "ARDUINO_ARCH_AVR",
                 "_DEBUG",
                 "UNICODE",
                 "_UNICODE"
