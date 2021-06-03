@@ -1,6 +1,6 @@
 
 // CANmINnOUT
-
+// Version 1b beta 1 to show changes for criticalEvent code. John Fletcher
 
 /*
   Copyright (C) 2021 Martin Da Costa
@@ -96,8 +96,8 @@ unsigned char mname[7] = { 'm', 'I', 'N', 'n', 'O', 'U', 'T' };
 
 // constants
 const byte VER_MAJ = 1;         // code major version
-const char VER_MIN = ' ';       // code minor version
-const byte VER_BETA = 0;        // code beta sub-version
+const char VER_MIN = 'b';       // code minor version
+const byte VER_BETA = 1;        // code beta sub-version
 const byte MODULE_ID = 99;      // CBUS module type
 
 const unsigned long CAN_OSC_FREQ = 8000000;     // Oscillator frequency on the CAN2515 board
@@ -189,6 +189,73 @@ void setupModule()
   }
 }
 
+/**
+ * An event that extends BaseEvent allows for event driven programming, either notified by polling, interrupt or
+ * another thread. There are two important methods that you need to implement, timeOfNextCheck that allows for polling
+ * events, where you do the check in that method and trigger the event calling setTriggered(). Alternatively, like
+ * this event, another thread or interrupt can trigger the event, in which case you call markTriggeredAndNotify() which
+ * wakes up task manager. When the event is triggered, is exec() method will be called.
+ */
+
+// It is somewhat confusing that this event class is not a CBUS event - it is an event within the TaskManagerIO framework.
+// The idea is that this code can respond when something out of course happens in the other tasks which are running.
+// It is possible to have more than one instance of this class.
+class CriticalEvent : public BaseEvent {
+private:
+    volatile byte eventValue;
+    volatile byte opCode;
+    volatile bool called;
+    static const uint32_t NEXT_CHECK_INTERVAL = 600UL * 1000000UL; // 10 * 60 seconds away, maximum is about 1 hour.
+public:
+    CriticalEvent() {
+        eventValue = 0; opCode = 0; eventValue = 0;
+        called = false;
+    }
+
+    /**
+     * Here we tell task manager when we wish to be checked upon again, to see if we should execute. In polling events
+     * we'd do our check here, and mark it as triggered if our condition was met, here instead we just tell task manager
+     * not to call us for 60 seconds at a go
+     * @return the time to the next check
+     */
+    uint32_t timeOfNextCheck() override {
+        // Nothing to do here.
+        return 250UL * 1000UL;
+    }
+
+    /**
+     * This is called when the event is triggered.
+     * This code checks that an opcode and event no have been supplied using setEvent which must be called first.
+     * This means that this code is needed to set off an event.
+     *   criticalEvent.setEvent(opCode,testEvent);
+     *   criticalEvent.markTriggeredAndNotify();
+     */
+    void exec() override {
+        // Check that an opCode has been set.
+        if (called) {
+          Serial.print("Critical event ");
+          Serial.print(opCode);
+          Serial.print(" ");
+          Serial.println(eventValue);
+        // This sends a CBUS event to somewhere else.
+          sendEvent(opCode,eventValue);
+          called = false; // reset so that values must be sent again
+        } else {
+          Serial.println("Critical event called without data");
+        }
+    }
+
+    // This needs to be called by the code generating the critical event before triggering.
+    void setEvent(byte opcode,byte event) {
+      called = true;  // Set here to force setting of values
+      eventValue = event; opCode = opcode; 
+    }
+    
+    /**
+     * We should always provide a destructor.
+     */
+    ~CriticalEvent() override = default;
+} criticalEvent;
 
 void setup()
 {
