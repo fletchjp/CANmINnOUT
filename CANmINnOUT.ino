@@ -78,6 +78,12 @@
 #define DEBUG_PRINT(S)
 #endif
 
+// IoAbstraction libraries
+#include <IoAbstraction.h>
+#include <TaskManagerIO.h>
+// IoAbstraction reference to the arduino pins.
+IoAbstractionRef arduinoPins = ioUsingArduino();
+
 // 3rd party libraries
 #include <Streaming.h>
 #include <Bounce2.h>
@@ -169,6 +175,14 @@ void setupCBUS()
   CBUS.setPins(CAN_CS_PIN, CAN_INT_PIN);           // select pins for CAN bus CE and interrupt connections
   CBUS.begin();
 }
+
+void runLEDs(){
+  // Run the LED code
+  for (int i = 0; i < NUM_LEDS; i++) {
+    moduleLED[i].run();
+  }
+}
+
 //
 ///  setup Module - runs once at power on called from setup()
 //
@@ -265,6 +279,11 @@ void setup()
   setupCBUS();
   setupModule();
 
+  // Schedule tasks to run every 250 milliseconds.
+  taskManager.scheduleFixedRate(250, runLEDs);
+  taskManager.scheduleFixedRate(250, processSwitches);
+  taskManager.registerEvent(&criticalEvent);
+
   // end of setup
   DEBUG_PRINT(F("> ready"));
 }
@@ -278,13 +297,9 @@ void loop()
   // process console commands
   processSerialInput();
 
-  // Run the LED code
-  for (int i = 0; i < NUM_LEDS; i++) {
-    moduleLED[i].run();
-  }
-
-  // test for switch input
-  processSwitches();
+  // Run IO_Abstraction tasks.
+  // This replaces actions taken here in the previous version.
+  taskManager.runLoop();
 
 }
 
@@ -353,6 +368,12 @@ void processSwitches(void)
   if (!isSuccess) 
   {
     DEBUG_PRINT(F("> One of the send message events failed"));
+    // Possible use - the user needs to decide on a value for sendFailureEvent
+    // Choose here which opcode and event code to send
+    //criticalEvent.setEvent(OPC_ACON,sendFailureEvent);
+    // This is how to trigger something in the criticalEvent.
+    //criticalEvent.markTriggeredAndNotify();
+
   }
 }
 
