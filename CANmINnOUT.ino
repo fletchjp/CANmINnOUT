@@ -1,6 +1,7 @@
 
 // CANmINnOUT
 // Version 1b beta 1 to show changes for criticalEvent code. John Fletcher
+// Version 1b beta 2 Make processSerialInput a task.
 
 /*
   Copyright (C) 2021 Martin Da Costa
@@ -103,7 +104,7 @@ unsigned char mname[7] = { 'm', 'I', 'N', 'n', 'O', 'U', 'T' };
 // constants
 const byte VER_MAJ = 1;         // code major version
 const char VER_MIN = 'b';       // code minor version
-const byte VER_BETA = 1;        // code beta sub-version
+const byte VER_BETA = 2;        // code beta sub-version
 const byte MODULE_ID = 99;      // CBUS module type
 
 const unsigned long CAN_OSC_FREQ = 8000000;     // Oscillator frequency on the CAN2515 board
@@ -282,6 +283,7 @@ void setup()
   // Schedule tasks to run every 250 milliseconds.
   taskManager.scheduleFixedRate(250, runLEDs);
   taskManager.scheduleFixedRate(250, processSwitches);
+  taskManager.scheduleFixedRate(250, processSerialInput);
   taskManager.registerEvent(&criticalEvent);
 
   // end of setup
@@ -294,8 +296,8 @@ void loop()
   // do CBUS message, switch and LED processing
   CBUS.process();
 
-  // process console commands
-  processSerialInput();
+  // process console commands is now a task.
+  // processSerialInput();
 
   // Run IO_Abstraction tasks.
   // This replaces actions taken here in the previous version.
