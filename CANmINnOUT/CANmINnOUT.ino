@@ -95,16 +95,17 @@
 unsigned char mname[7] = { 'm', 'I', 'N', 'n', 'O', 'U', 'T' };
 
 // constants
-const byte VER_MAJ = 2;     // code major version
-const char VER_MIN = 'a';   // code minor version
-const byte VER_BETA = 0;    // code beta sub-version
-const byte MODULE_ID = 99;  // CBUS module type
+const byte VER_MAJ = 2;             // code major version
+const char VER_MIN = 'a';           // code minor version
+const byte VER_BETA = 0;            // code beta sub-version
+const byte MANUFACTURER = MANU_DEV; // for boards in development.
+const byte MODULE_ID = 99;          // CBUS module type
 
 const unsigned long CAN_OSC_FREQ = 8000000;  // Oscillator frequency on the CAN2515 board
 
 //Module pins available for use are Pins 3 - 9 and A0 - A5
-const byte LED[] = { 8, 7 };     // LED pin connections through typ. 1K8 resistor
-const byte SWITCH[] = { 9, 6 };  // Module Switch takes input to 0V.
+const byte LED[] = {8, 7};     // LED pin connections through typ. 1K8 resistor
+const byte SWITCH[] = {9, 6};  // Module Switch takes input to 0V.
 
 const int NUM_LEDS = sizeof(LED) / sizeof(LED[0]);
 const int NUM_SWITCHES = sizeof(SWITCH) / sizeof(SWITCH[0]);
@@ -161,6 +162,7 @@ void setupCBUS() {
   // set module parameters
   CBUSParams params(module_config);
   params.setVersion(VER_MAJ, VER_MIN, VER_BETA);
+  params.setManufacturerId(MANUFACTURER);
   params.setModuleId(MODULE_ID);
   params.setFlags(PF_FLiM | PF_COMBI);
 
@@ -200,9 +202,7 @@ void setupModule() {
 
 void setup() {
   Serial.begin(115200);
-  Serial << endl
-         << endl
-         << F("> ** CBUS m in n out v1 ** ") << __FILE__ << endl;
+  Serial << endl << F("> ** CBUS m in n out v1 ** ") << __FILE__ << endl;
 
   setupCBUS();
   setupModule();
@@ -243,7 +243,7 @@ void processSwitches(void) {
       Serial << F(" NV = ") << nv << F(" NV Value = ") << nvval << endl;
 
       switch (nvval) {
-        case 1:
+        case 0:
           // ON and OFF
           opCode = (moduleSwitch[i].fell() ? OPC_ACON : OPC_ACOF);
           DEBUG_PRINT(F("> Button ") << i
@@ -251,7 +251,7 @@ void processSwitches(void) {
           isSuccess = sendEvent(opCode, (i + 1));
           break;
 
-        case 2:
+        case 1:
           // Only ON
           if (moduleSwitch[i].fell()) {
             opCode = OPC_ACON;
@@ -260,7 +260,7 @@ void processSwitches(void) {
           }
           break;
 
-        case 3:
+        case 2:
           // Only OFF
           if (moduleSwitch[i].fell()) {
             opCode = OPC_ACOF;
@@ -269,7 +269,7 @@ void processSwitches(void) {
           }
           break;
 
-        case 4:
+        case 3:
           // Toggle button
           if (moduleSwitch[i].fell()) {
             switchState[i] = !switchState[i];
